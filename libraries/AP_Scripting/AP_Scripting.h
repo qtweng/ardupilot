@@ -34,8 +34,7 @@ public:
     AP_Scripting();
 
     /* Do not allow copies */
-    AP_Scripting(const AP_Scripting &other) = delete;
-    AP_Scripting &operator=(const AP_Scripting&) = delete;
+    CLASS_NO_COPY(AP_Scripting);
 
     void init(void);
 
@@ -51,6 +50,8 @@ public:
     void handle_mission_command(const class AP_Mission::Mission_Command& cmd);
 
     bool arming_checks(size_t buflen, char *buffer) const;
+    
+    void restart_all(void);
 
    // User parameters for inputs into scripts 
    AP_Float _user[6];

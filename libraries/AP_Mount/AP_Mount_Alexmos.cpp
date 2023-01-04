@@ -2,9 +2,6 @@
 
 #if HAL_MOUNT_ALEXMOS_ENABLED
 #include <AP_SerialManager/AP_SerialManager.h>
-#include <AP_AHRS/AP_AHRS.h>
-
-extern const AP_HAL::HAL& hal;
 
 void AP_Mount_Alexmos::init()
 {
@@ -96,7 +93,7 @@ void AP_Mount_Alexmos::update()
     control_axis(_angle_rad);
 }
 
-// has_pan_control - returns true if this mount can control it's pan (required for multicopters)
+// has_pan_control - returns true if this mount can control its pan (required for multicopters)
 bool AP_Mount_Alexmos::has_pan_control() const
 {
     return _gimbal_3axis && yaw_range_valid();

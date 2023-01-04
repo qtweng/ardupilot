@@ -55,6 +55,7 @@ brand_map = {
     'CUAVv5Nano' : ('CUAVv5 Nano', 'CUAV'),
     'CUAVv5Nano-bdshot' : ('CUAVv5 Nano', 'CUAV'),
     'CUAV-Nora' : ('CUAV Nora', 'CUAV'),
+    'CUAV-Nora-bdshot' : ('CUAV Nora', 'CUAV'),
     'CUAV-X7' : ('CUAV X7', 'CUAV'),
     'CUAV-X7-bdshot' : ('CUAV X7', 'CUAV'),
     'DrotekP3Pro' : ('Pixhawk 3 Pro', 'Drotek'),
@@ -86,6 +87,7 @@ brand_map = {
     'OmnibusNanoV6' : ('Omnibus Nano V6', 'Airbot'),
     'OmnibusNanoV6-bdshot' : ('Omnibus Nano V6', 'Airbot'),
     'speedybeef4' : ('SpeedyBee F4', 'SpeedyBee'),
+    'speedybeef4v3' : ('SpeedyBee F4 v3', 'SpeedyBee'),
     'QioTekZealotF427' : ('ZealotF427', 'QioTek'),
     'BeastH7' : ('Beast H7 55A AIO', 'iFlight'),
     'BeastH7v2' : ('Beast H7 v2 55A AIO', 'iFlight'),
@@ -100,6 +102,8 @@ brand_map = {
     'Pixhawk5X' : ('Pixhawk 5X', 'Holybro'),
     "AIRLink" : ("Sky-Drones Technologies", "AIRLink"),
     "SPRacingH7" : ("Seriously Pro Racing", "H7 Extreme"),
+    "SkystarsH7HD" : ("Skystars", "H743 HD"),
+    "SkystarsH7HD-bdshot" : ("Skystars", "H743 HD"),
 }
 
 class Firmware():

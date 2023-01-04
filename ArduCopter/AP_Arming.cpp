@@ -92,6 +92,11 @@ bool AP_Arming_Copter::rc_throttle_failsafe_checks(bool display_failure) const
     const char *rc_item = "Throttle";
 #endif
 
+    if (!rc().has_had_rc_receiver() && !rc().has_had_rc_override()) {
+        check_failed(ARMING_CHECK_RC, display_failure, "RC not found");
+        return false;
+    }
+
     // check throttle is not too low - must be above failsafe throttle
     if (copter.channel_throttle->get_radio_in() < copter.g.failsafe_throttle_value) {
         check_failed(ARMING_CHECK_RC, display_failure, "%s below failsafe", rc_item);
@@ -247,12 +252,6 @@ bool AP_Arming_Copter::parameter_checks(bool display_failure)
             check_failed(ARMING_CHECK_PARAMETERS, display_failure, "Invalid MultiCopter FRAME_CLASS");
             return false;
         }
-
-        // checks MOT_PWM_MIN/MAX for acceptable values
-        if (!copter.motors->check_mot_pwm_params()) {
-            check_failed(ARMING_CHECK_PARAMETERS, display_failure, "Check MOT_PWM_MIN/MAX");
-            return false;
-        }
         #endif // HELI_FRAME
 
         // checks when using range finder for RTL
@@ -380,7 +379,7 @@ bool AP_Arming_Copter::gps_checks(bool display_failure)
     }
 
     // warn about hdop separately - to prevent user confusion with no gps lock
-    if (copter.gps.get_hdop() > copter.g.gps_hdop_good) {
+    if ((copter.gps.num_sensors() > 0) && (copter.gps.get_hdop() > copter.g.gps_hdop_good)) {
         check_failed(ARMING_CHECK_GPS, display_failure, "High GPS HDOP");
         AP_Notify::flags.pre_arm_gps_check = false;
         return false;
@@ -746,7 +745,7 @@ bool AP_Arming_Copter::arm(const AP_Arming::Method method, const bool do_arming_
 
     hal.util->set_soft_armed(true);
 
-#if SPRAYER_ENABLED == ENABLED
+#if HAL_SPRAYER_ENABLED
     // turn off sprayer's test if on
     copter.sprayer.test_pump(false);
 #endif

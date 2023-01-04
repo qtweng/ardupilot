@@ -171,15 +171,13 @@ class AutoTestPlane(AutoTest):
         while not success:
             if self.get_sim_time_cached() - tstart > 60:
                 raise NotAchievedException("Did not get correct failure reason")
-            self.send_mavlink_arm_command()
+            self.run_cmd_run_prearms()
             try:
                 self.wait_statustext(".*AHRS: not using configured AHRS type.*", timeout=1, check_context=True, regex=True)
                 success = True
                 continue
             except AutoTestTimeoutException:
                 pass
-            if self.armed():
-                raise NotAchievedException("Armed unexpectedly")
 
         self.set_parameter("SIM_GPS_DISABLE", 0)
         self.wait_ready_to_arm()
@@ -712,7 +710,7 @@ class AutoTestPlane(AutoTest):
         ]
 
         for (current_waypoint, want_airspeed) in checks:
-            self.wait_current_waypoint(current_waypoint, timeout=120)
+            self.wait_current_waypoint(current_waypoint, timeout=150)
             self.wait_airspeed(want_airspeed-1, want_airspeed+1, minimum_duration=5, timeout=120)
 
         self.fly_home_land_and_disarm()
@@ -1723,6 +1721,42 @@ class AutoTestPlane(AutoTest):
         self.run_subtest("Mission test",
                          lambda: self.fly_mission("ap1.txt", strict=False))
 
+    def PitotBlockage(self):
+        '''Test detection and isolation of a blocked pitot tube'''
+        self.set_parameters({
+            "ARSPD_OPTIONS": 15,
+            "ARSPD_USE": 1,
+            "SIM_WIND_SPD": 7,
+            "SIM_WIND_DIR": 0,
+            "ARSPD_WIND_MAX": 15,
+        })
+        self.change_mode("TAKEOFF")
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+        # simulate the effect of a blocked pitot tube
+        self.set_parameter("ARSPD_RATIO", 0.1)
+        self.delay_sim_time(10)
+        if (self.get_parameter("ARSPD_USE") == 0):
+            self.progress("Faulty Sensor Disabled")
+        else:
+            raise NotAchievedException("Airspeed Sensor Not Disabled")
+        self.delay_sim_time(20)
+        # simulate the effect of blockage partially clearing
+        self.set_parameter("ARSPD_RATIO", 1.0)
+        self.delay_sim_time(60)
+        if (self.get_parameter("ARSPD_USE") == 0):
+            self.progress("Faulty Sensor Remains Disabled")
+        else:
+            raise NotAchievedException("Fault Sensor Re-Enabled")
+        # simulate the effect of blockage fully clearing
+        self.set_parameter("ARSPD_RATIO", 2.0)
+        self.delay_sim_time(60)
+        if (self.get_parameter("ARSPD_USE") == 1):
+            self.progress("Sensor Re-Enabled")
+        else:
+            raise NotAchievedException("Airspeed Sensor Not Re-Enabled")
+        self.disarm_vehicle(force=True)
+
     def AIRSPEED_AUTOCAL(self):
         '''Test AIRSPEED_AUTOCAL'''
         self.progress("Ensure no AIRSPEED_AUTOCAL on ground")
@@ -1943,56 +1977,40 @@ class AutoTestPlane(AutoTest):
 
     def RangeFinder(self):
         '''Test RangeFinder Basic Functionality'''
-        ex = None
         self.context_push()
         self.progress("Making sure we don't ordinarily get RANGEFINDER")
-        m = None
-        try:
-            m = self.mav.recv_match(type='RANGEFINDER',
-                                    blocking=True,
-                                    timeout=5)
-        except Exception as e:
-            self.print_exception_caught(e)
+        self.assert_not_receive_message('RANGEFDINDER')
 
-        if m is not None:
-            raise NotAchievedException("Received unexpected RANGEFINDER msg")
+        self.set_analog_rangefinder_parameters()
 
-        try:
-            self.set_analog_rangefinder_parameters()
+        self.reboot_sitl()
 
-            self.reboot_sitl()
+        '''ensure rangefinder gives height-above-ground'''
+        self.load_mission("plane-gripper-mission.txt") # borrow this
+        self.set_parameter("RTL_AUTOLAND", 1)
+        self.set_current_waypoint(1)
+        self.change_mode('AUTO')
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+        self.wait_waypoint(5, 5, max_dist=100)
+        rf = self.mav.recv_match(type="RANGEFINDER", timeout=1, blocking=True)
+        if rf is None:
+            raise NotAchievedException("Did not receive rangefinder message")
+        gpi = self.mav.recv_match(type='GLOBAL_POSITION_INT', blocking=True, timeout=1)
+        if gpi is None:
+            raise NotAchievedException("Did not receive GLOBAL_POSITION_INT message")
+        if abs(rf.distance - gpi.relative_alt/1000.0) > 3:
+            raise NotAchievedException(
+                "rangefinder alt (%s) disagrees with global-position-int.relative_alt (%s)" %
+                (rf.distance, gpi.relative_alt/1000.0))
+        self.wait_statustext("Auto disarmed", timeout=60)
 
-            '''ensure rangefinder gives height-above-ground'''
-            self.load_mission("plane-gripper-mission.txt") # borrow this
-            self.set_parameter("RTL_AUTOLAND", 1)
-            self.set_current_waypoint(1)
-            self.change_mode('AUTO')
-            self.wait_ready_to_arm()
-            self.arm_vehicle()
-            self.wait_waypoint(5, 5, max_dist=100)
-            rf = self.mav.recv_match(type="RANGEFINDER", timeout=1, blocking=True)
-            if rf is None:
-                raise NotAchievedException("Did not receive rangefinder message")
-            gpi = self.mav.recv_match(type='GLOBAL_POSITION_INT', blocking=True, timeout=1)
-            if gpi is None:
-                raise NotAchievedException("Did not receive GLOBAL_POSITION_INT message")
-            if abs(rf.distance - gpi.relative_alt/1000.0) > 3:
-                raise NotAchievedException(
-                    "rangefinder alt (%s) disagrees with global-position-int.relative_alt (%s)" %
-                    (rf.distance, gpi.relative_alt/1000.0))
-            self.wait_statustext("Auto disarmed", timeout=60)
+        self.progress("Ensure RFND messages in log")
+        if not self.current_onboard_log_contains_message("RFND"):
+            raise NotAchievedException("No RFND messages in log")
 
-            self.progress("Ensure RFND messages in log")
-            if not self.current_onboard_log_contains_message("RFND"):
-                raise NotAchievedException("No RFND messages in log")
-
-        except Exception as e:
-            self.print_exception_caught(e)
-            ex = e
         self.context_pop()
         self.reboot_sitl()
-        if ex is not None:
-            raise ex
 
     def rc_defaults(self):
         ret = super(AutoTestPlane, self).rc_defaults()
@@ -2390,7 +2408,7 @@ class AutoTestPlane(AutoTest):
         self.wait_altitude(alt_min-10, alt_min, timeout=600, relative=True)
 
         self.progress("Waiting for throttle up")
-        self.wait_servo_channel_value(3, 1200, timeout=2, comparator=operator.gt)
+        self.wait_servo_channel_value(3, 1200, timeout=5, comparator=operator.gt)
 
         self.progress("Waiting for climb to cutoff altitude")
         alt_ctf = self.get_parameter('SOAR_ALT_CUTOFF')
@@ -2717,15 +2735,26 @@ class AutoTestPlane(AutoTest):
         self.progress("loitering at %um" % alt)
         tstart = self.get_sim_time()
         timeout = 60*15  # enough time to do one and a bit circles
+        max_delta = 0
         while True:
             now = self.get_sim_time_cached()
             if now - tstart > timeout:
                 break
+            gpi = self.assert_receive_message('GLOBAL_POSITION_INT')
             terrain = self.assert_receive_message('TERRAIN_REPORT')
             rel_alt = terrain.current_height
-            self.progress("%um above terrain" % rel_alt)
+            self.progress("%um above terrain (%um bove home)" %
+                          (rel_alt, gpi.relative_alt/1000.0))
             if rel_alt > alt*1.2 or rel_alt < alt * 0.8:
                 raise NotAchievedException("Not terrain following")
+            delta = abs(rel_alt - gpi.relative_alt/1000.0)
+            if delta > max_delta:
+                max_delta = delta
+        want_max_delta = 30
+        if max_delta < want_max_delta:
+            raise NotAchievedException(
+                "Expected terrain and home alts to vary more than they did (max=%u want=%u)" %
+                (max_delta, want_max_delta))
         self.context_pop()
         self.progress("Returning home")
         self.fly_home_land_and_disarm(240)
@@ -2752,6 +2781,86 @@ class AutoTestPlane(AutoTest):
         self.wait_ready_to_arm()
         self.arm_vehicle()
         self.fly_mission(mission)
+
+    def wait_and_maintain_wind_estimate(
+            self,
+            want_speed,
+            want_dir,
+            timeout=10,
+            speed_tolerance=0.5,
+            dir_tolerance=5,
+            **kwargs):
+        '''wait for wind estimate to reach speed and direction'''
+
+        def validator(last, _min, _max):
+            '''returns false of spd or direction is too-far wrong'''
+            (spd, di) = last
+            _min_spd, _min_dir = _min
+            _max_spd, _max_dir = _max
+            if spd < _min_spd or spd > _max_spd:
+                return False
+            # my apologies to whoever is staring at this and wondering
+            # why we're not wrapping angles here...
+            if di < _min_dir or di > _max_dir:
+                return False
+            return True
+
+        def value_getter():
+            '''returns a tuple of (wind_speed, wind_dir), where wind_dir is 45 if
+            wind is coming from NE'''
+            m = self.assert_receive_message("WIND")
+            return (m.speed, m.direction)
+
+        class ValueAverager(object):
+            def __init__(self):
+                self.speed_average = -1
+                self.dir_average = -1
+                self.count = 0.0
+
+            def add_value(self, value):
+                (spd, di) = value
+                if self.speed_average == -1:
+                    self.speed_average = spd
+                    self.dir_average = di
+                else:
+                    self.speed_average += spd
+                    self.di_average += spd
+                self.count += 1
+                return (self.speed_average/self.count, self.dir_average/self.count)
+
+            def reset(self):
+                self.count = 0
+                self.speed_average = -1
+                self.dir_average = -1
+
+        self.wait_and_maintain_range(
+            value_name="WindEstimates",
+            minimum=(want_speed-speed_tolerance, want_dir-dir_tolerance),
+            maximum=(want_speed+speed_tolerance, want_dir+dir_tolerance),
+            current_value_getter=value_getter,
+            value_averager=ValueAverager(),
+            validator=lambda last, _min, _max: validator(last, _min, _max),
+            timeout=timeout,
+            **kwargs
+        )
+
+    def WindEstimates(self):
+        '''fly non-external AHRS, ensure wind estimate correct'''
+        self.set_parameters({
+            "SIM_WIND_SPD": 5,
+            "SIM_WIND_DIR": 45,
+        })
+        self.wait_ready_to_arm()
+        self.takeoff(70)  # default wind sim wind is a sqrt function up to 60m
+        self.change_mode('LOITER')
+        # use default estimator to determine when to check others:
+        self.wait_and_maintain_wind_estimate(5, 45, timeout=120)
+
+        for ahrs_type in 0, 2, 3, 10:
+            self.start_subtest("Checking AHRS_EKF_TYPE=%u" % ahrs_type)
+            self.set_parameter("AHRS_EKF_TYPE", ahrs_type)
+            self.wait_and_maintain_wind_estimate(5, 45, speed_tolerance=1)
+        self.fly_home_land_and_disarm()
 
     def VectorNavEAHRS(self):
         '''Test VectorNav EAHRS support'''
@@ -3393,22 +3502,6 @@ class AutoTestPlane(AutoTest):
         attempt_fence_breached_disable(start_mode="FBWA", end_mode="FBWA", expected_mode="GUIDED", action=6)
         attempt_fence_breached_disable(start_mode="FBWA", end_mode="FBWA", expected_mode="GUIDED", action=7)
 
-    def run_auxfunc(self,
-                    function,
-                    level,
-                    want_result=mavutil.mavlink.MAV_RESULT_ACCEPTED):
-        self.run_cmd(
-            mavutil.mavlink.MAV_CMD_DO_AUX_FUNCTION,
-            function,  # p1
-            level,  # p2
-            0,  # p3
-            0,  # p4
-            0,  # p5
-            0,  # p6
-            0,  # p7
-            want_result=want_result
-        )
-
     def MAV_DO_AUX_FUNCTION(self):
         '''Test triggering Auxiliary Functions via mavlink'''
         self.context_collect('STATUSTEXT')
@@ -3442,6 +3535,8 @@ class AutoTestPlane(AutoTest):
             "quadplane-cl84": "falls out of sky instead of transitioning",
             "quadplane-tilttri": "falls out of sky instead of transitioning",
             "quadplane-tilttrivec": "loses attitude control and crashes",
+            "plane-ice" : "needs ICE control channel for ignition",
+            "quadplane-ice" : "needs ICE control channel for ignition",
         }
         for frame in sorted(vinfo_options["frames"].keys()):
             self.start_subtest("Testing frame (%s)" % str(frame))
@@ -3925,6 +4020,126 @@ class AutoTestPlane(AutoTest):
         self.disarm_vehicle(force=True)
         self.reboot_sitl()
 
+    def AerobaticsScripting(self):
+        '''Fixed Wing Aerobatics'''
+        applet_script = "Aerobatics/FixedWing/plane_aerobatics.lua"
+        airshow = "Aerobatics/FixedWing/Schedules/AirShow.txt"
+        trick72 = "trick72.txt"
+
+        model = "plane-3d"
+
+        self.customise_SITL_commandline(
+            [],
+            model=model,
+            defaults_filepath="",
+            wipe=True)
+
+        self.context_push()
+        self.install_applet_script(applet_script)
+        self.install_applet_script(airshow, install_name=trick72)
+        self.context_collect('STATUSTEXT')
+        self.reboot_sitl()
+
+        self.set_parameter("TRIK_ENABLE", 1)
+        self.set_rc(7, 1000) # disable tricks
+
+        self.scripting_restart()
+        self.wait_text("Enabled 3 aerobatic tricks", check_context=True)
+        self.set_parameters({
+            "TRIK1_ID": 72,
+            "RC7_OPTION" : 300, # activation switch
+            "RC9_OPTION" : 301, # selection switch
+            "SIM_SPEEDUP": 5, # need to give some cycles to lua
+        })
+
+        self.wait_ready_to_arm()
+        self.change_mode("TAKEOFF")
+        self.arm_vehicle()
+        self.wait_altitude(30, 40, timeout=30, relative=True)
+        self.change_mode("CRUISE")
+
+        self.set_rc(9, 1000) # select first trick
+        self.delay_sim_time(1)
+        self.set_rc(7, 1500) # show selected trick
+
+        self.wait_text("Trick 1 selected (SuperAirShow)", check_context=True)
+        self.set_rc(7, 2000) # activate trick
+        self.wait_text("Trick 1 started (SuperAirShow)", check_context=True)
+
+        highest_error = 0
+        while True:
+            m = self.mav.recv_match(type='NAMED_VALUE_FLOAT', blocking=True, timeout=2)
+            if not m:
+                break
+            if m.name != 'PERR':
+                continue
+            highest_error = max(highest_error, m.value)
+            if highest_error > 15:
+                raise NotAchievedException("path error %.1f" % highest_error)
+
+        if highest_error == 0:
+            raise NotAchievedException("path error not reported")
+        self.progress("Finished trick, max error=%.1fm" % highest_error)
+        self.disarm_vehicle(force=True)
+
+        self.remove_example_script(applet_script)
+        self.remove_example_script(trick72)
+        messages = self.context_collection('STATUSTEXT')
+        self.context_pop()
+        self.reboot_sitl()
+
+        # check all messages to see if we got all tricks
+        tricks = ["Loop", "HalfReverseCubanEight", "ScaleFigureEight", "Immelmann",
+                  "Split-S", "RollingCircle", "HumptyBump", "HalfCubanEight",
+                  "BarrelRoll", "CrossBoxTopHat", "TriangularLoop",
+                  "Finishing SuperAirShow!"]
+        texts = [m.text for m in messages]
+        for t in tricks:
+            if t in texts:
+                self.progress("Completed trick %s" % t)
+            else:
+                raise NotAchievedException("Missing trick %s" % t)
+
+    def MANUAL_CONTROL(self):
+        '''test MANUAL_CONTROL mavlink message'''
+        self.set_parameter("SYSID_MYGCS", self.mav.source_system)
+
+        self.progress("Takeoff")
+        self.takeoff(alt=50)
+
+        self.change_mode('FBWA')
+
+        tstart = self.get_sim_time_cached()
+        roll_input = -500
+        want_roll_degrees = -12
+        while True:
+            if self.get_sim_time_cached() - tstart > 10:
+                raise AutoTestTimeoutException("Did not reach roll")
+            self.progress("Sending roll-left")
+            self.mav.mav.manual_control_send(
+                1, # target system
+                32767, # x (pitch)
+                roll_input, # y (roll)
+                32767, # z (thrust)
+                32767, # r (yaw)
+                0) # button mask
+            m = self.mav.recv_match(type='ATTITUDE', blocking=True, timeout=1)
+            print("m=%s" % str(m))
+            if m is None:
+                continue
+            p = math.degrees(m.roll)
+            self.progress("roll=%f want<=%f" % (p, want_roll_degrees))
+            if p <= want_roll_degrees:
+                break
+        self.mav.mav.manual_control_send(
+            1, # target system
+            32767, # x (pitch)
+            32767, # y (roll)
+            32767, # z (thrust)
+            32767, # r (yaw)
+            0) # button mask
+        self.fly_home_land_and_disarm()
+
     def tests(self):
         '''return list of all tests'''
         ret = super(AutoTestPlane, self).tests()
@@ -3943,6 +4158,7 @@ class AutoTestPlane(AutoTest):
             self.TestGripperMission,
             self.Parachute,
             self.ParachuteSinkRate,
+            self.PitotBlockage,
             self.AIRSPEED_AUTOCAL,
             self.RangeFinder,
             self.FenceStatic,
@@ -4000,6 +4216,10 @@ class AutoTestPlane(AutoTest):
             self.GlideSlopeThresh,
             self.HIGH_LATENCY2,
             self.MidAirDisarmDisallowed,
+            self.EmbeddedParamParser,
+            self.AerobaticsScripting,
+            self.MANUAL_CONTROL,
+            self.WindEstimates,
         ])
         return ret
 

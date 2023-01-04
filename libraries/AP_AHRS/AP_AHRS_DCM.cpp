@@ -27,6 +27,7 @@
 #include <AP_Baro/AP_Baro.h>
 #include <AP_Compass/AP_Compass.h>
 #include <AP_Logger/AP_Logger.h>
+#include <AP_Vehicle/AP_Vehicle_Type.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -1252,4 +1253,10 @@ bool AP_AHRS_DCM::get_relative_position_D_origin(float &posD) const
 
 void AP_AHRS_DCM::send_ekf_status_report(GCS_MAVLINK &link) const
 {
+}
+
+// return true if DCM has a yaw source available
+bool AP_AHRS_DCM::yaw_source_available(void) const
+{
+    return AP::compass().use_for_yaw();
 }

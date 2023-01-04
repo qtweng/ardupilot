@@ -35,7 +35,8 @@ private:
         VER,  // i.e. the "VER" message
         SYSTEM_ID,
         PARAM_SPACE_USED,
-        RC_PROTOCOL
+        RC_PROTOCOL,
+        RC_OUTPUT,
     };
     Stage stage;
 };
@@ -143,6 +144,9 @@ public:
 #endif
 
 private:
+
+    // check for using too much time
+    static bool check_process_limit(uint32_t start_us);
 
     enum class Stage {
         FORMATS = 0,

@@ -1,6 +1,7 @@
 #include "Sub.h"
 
 #include "GCS_Mavlink.h"
+#include <AP_RPM/AP_RPM_config.h>
 
 MAV_TYPE GCS_Sub::frame_type() const
 {
@@ -95,7 +96,9 @@ int16_t GCS_MAVLINK_Sub::vfr_hud_throttle() const
 // Work around to get temperature sensor data out
 void GCS_MAVLINK_Sub::send_scaled_pressure3()
 {
-    if (!sub.celsius.healthy()) {
+#if AP_TEMPERATURE_SENSOR_ENABLED
+    float temperature;
+    if (!sub.temperature_sensor.get_temperature(temperature)) {
         return;
     }
     mavlink_msg_scaled_pressure3_send(
@@ -103,8 +106,9 @@ void GCS_MAVLINK_Sub::send_scaled_pressure3()
         AP_HAL::millis(),
         0,
         0,
-        sub.celsius.temperature() * 100,
+        temperature * 100,
         0); // TODO: use differential pressure temperature
+#endif
 }
 
 bool GCS_MAVLINK_Sub::send_info()
@@ -379,7 +383,6 @@ static const ap_message STREAM_EXTRA3_msgs[] = {
 #if AP_TERRAIN_AVAILABLE
     MSG_TERRAIN,
 #endif
-    MSG_BATTERY2,
     MSG_BATTERY_STATUS,
     MSG_GIMBAL_DEVICE_ATTITUDE_STATUS,
     MSG_OPTICAL_FLOW,
@@ -387,7 +390,7 @@ static const ap_message STREAM_EXTRA3_msgs[] = {
     MSG_MAG_CAL_PROGRESS,
     MSG_EKF_STATUS_REPORT,
     MSG_VIBRATION,
-#if RPM_ENABLED == ENABLED
+#if AP_RPM_ENABLED
     MSG_RPM,
 #endif
     MSG_ESC_TELEMETRY,
@@ -540,6 +543,19 @@ void GCS_MAVLINK_Sub::handleMessage(const mavlink_message_t &msg)
         // a RC override message is considered to be a 'heartbeat'
         // from the ground station for failsafe purposes
         gcs().sysid_myggcs_seen(AP_HAL::millis());
+        break;
+    }
+
+    case MAVLINK_MSG_ID_RC_CHANNELS_OVERRIDE: {     // MAV ID: 70
+        if (msg.sysid != sub.g.sysid_my_gcs) {
+            break;    // Only accept control from our gcs
+        }
+
+        sub.failsafe.last_pilot_input_ms = AP_HAL::millis();
+        // a RC override message is considered to be a 'heartbeat'
+        // from the ground station for failsafe purposes
+        
+        handle_rc_channels_override(msg);
         break;
     }
 

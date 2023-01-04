@@ -29,7 +29,7 @@
 #include <AP_Common/ExpandingString.h>
 #include "sdcard.h"
 #include "shared_dma.h"
-#if defined(HAL_PWM_ALARM) || HAL_DSHOT_ALARM || HAL_CANMANAGER_ENABLED || HAL_USE_PWM == TRUE
+#if defined(HAL_PWM_ALARM) || HAL_DSHOT_ALARM_ENABLED || HAL_CANMANAGER_ENABLED || HAL_USE_PWM == TRUE
 #include <AP_Notify/AP_Notify.h>
 #endif
 #if HAL_ENABLE_SAVE_PERSISTENT_PARAMS
@@ -171,7 +171,7 @@ bool Util::toneAlarm_init(uint8_t types)
 #endif
     _toneAlarm_types = types;
 
-#if HAL_USE_PWM != TRUE && !HAL_DSHOT_ALARM && !HAL_CANMANAGER_ENABLED
+#if HAL_USE_PWM != TRUE && !HAL_DSHOT_ALARM_ENABLED && !HAL_CANMANAGER_ENABLED
     // Nothing to do
     return false;
 #else
@@ -209,7 +209,7 @@ void Util::toneAlarm_set_buzzer_tone(float frequency, float volume, uint32_t dur
         }
     }
 #endif // HAL_USE_PWM
-#if HAL_DSHOT_ALARM
+#if HAL_DSHOT_ALARM_ENABLED
     // don't play the motors while flying
     if (!(_toneAlarm_types & AP_Notify::Notify_Buzz_DShot) || get_soft_armed() || hal.rcout->get_dshot_esc_type() != RCOutput::DSHOT_ESC_BLHELI) {
         return;
@@ -228,7 +228,7 @@ void Util::toneAlarm_set_buzzer_tone(float frequency, float volume, uint32_t dur
     } else {  // G+
         hal.rcout->send_dshot_command(RCOutput::DSHOT_BEEP5, RCOutput::ALL_CHANNELS, duration_ms);
     }
-#endif // HAL_DSHOT_ALARM
+#endif // HAL_DSHOT_ALARM_ENABLED
 }
 
 /*
@@ -372,22 +372,24 @@ Util::FlashBootloader Util::flash_bootloader()
 /*
   display system identifer - board type and serial number
  */
-bool Util::get_system_id(char buf[40])
+bool Util::get_system_id(char buf[50])
 {
     uint8_t serialid[12];
-    char board_name[14];
+    char board_name[24];
 
     memcpy(serialid, (const void *)UDID_START, 12);
-    strncpy(board_name, CHIBIOS_SHORT_BOARD_NAME, 13);
-    board_name[13] = 0;
+    // avoid board names greater than 23 chars (sizeof includes null char, so allow 24 bytes total)
+    static_assert(sizeof(CHIBIOS_SHORT_BOARD_NAME) <= 24, "CHIBIOS_SHORT_BOARD_NAME must be 23 characters or less");
+    strncpy(board_name, CHIBIOS_SHORT_BOARD_NAME, 23);
+    board_name[23] = 0;
 
     // this format is chosen to match the format used by HAL_PX4
-    snprintf(buf, 40, "%s %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
+    snprintf(buf, 50, "%s %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X",
              board_name,
              (unsigned)serialid[3], (unsigned)serialid[2], (unsigned)serialid[1], (unsigned)serialid[0],
              (unsigned)serialid[7], (unsigned)serialid[6], (unsigned)serialid[5], (unsigned)serialid[4],
              (unsigned)serialid[11], (unsigned)serialid[10], (unsigned)serialid[9],(unsigned)serialid[8]);
-    buf[39] = 0;
+    buf[49] = 0;
     return true;
 }
 

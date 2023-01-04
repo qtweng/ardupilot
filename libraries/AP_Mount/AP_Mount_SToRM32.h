@@ -13,8 +13,6 @@
 
 #include <AP_Math/AP_Math.h>
 #include <AP_Common/AP_Common.h>
-#include <RC_Channel/RC_Channel.h>
-#include <AP_AHRS/AP_AHRS.h>
 
 class AP_Mount_SToRM32 : public AP_Mount_Backend
 {
@@ -29,11 +27,8 @@ public:
     // update mount position - should be called periodically
     void update() override;
 
-    // has_pan_control - returns true if this mount can control it's pan (required for multicopters)
+    // has_pan_control - returns true if this mount can control its pan (required for multicopters)
     bool has_pan_control() const override { return yaw_range_valid(); }
-
-    // set_mode - sets mount's mode
-    void set_mode(enum MAV_MOUNT_MODE mode) override;
 
 protected:
 

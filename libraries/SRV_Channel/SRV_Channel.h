@@ -23,19 +23,8 @@
 #include <AP_BLHeli/AP_BLHeli.h>
 #include <AP_FETtecOneWire/AP_FETtecOneWire.h>
 
-#ifndef NUM_SERVO_CHANNELS
-#if defined(HAL_BUILD_AP_PERIPH) && defined(HAL_PWM_COUNT)
-    #define NUM_SERVO_CHANNELS HAL_PWM_COUNT
-#elif defined(HAL_BUILD_AP_PERIPH)
-    #define NUM_SERVO_CHANNELS 0
-#else
-    #if !HAL_MINIMIZE_FEATURES && BOARD_FLASH_SIZE > 1024
-        #define NUM_SERVO_CHANNELS 32
-    #else
-        #define NUM_SERVO_CHANNELS 16
-    #endif
-#endif
-#endif
+#include "SRV_Channel_config.h"
+
 static_assert(NUM_SERVO_CHANNELS <= 32, "More than 32 servos not supported");
 
 class SRV_Channels;
@@ -517,6 +506,8 @@ public:
     // return the ESC type for dshot commands
     static AP_HAL::RCOutput::DshotEscType get_dshot_esc_type() { return AP_HAL::RCOutput::DshotEscType(_singleton->dshot_esc_type.get()); }
 
+    static uint8_t get_dshot_rate() { return _singleton->dshot_rate.get(); }
+
     static SRV_Channel *srv_channel(uint8_t i) {
 #if NUM_SERVO_CHANNELS > 0
         return i<NUM_SERVO_CHANNELS?&channels[i]:nullptr;
@@ -567,7 +558,7 @@ public:
     static void zero_rc_outputs();
 
     // initialize before any call to push
-    static void init();
+    static void init(uint32_t motor_mask = 0, AP_HAL::RCOutput::output_mode mode = AP_HAL::RCOutput::MODE_PWM_NONE);
 
     // return true if a channel is set to type GPIO
     static bool is_GPIO(uint8_t channel);

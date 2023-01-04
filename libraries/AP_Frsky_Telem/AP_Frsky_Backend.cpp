@@ -1,5 +1,7 @@
 #include "AP_Frsky_Backend.h"
 
+#if AP_FRSKY_TELEM_ENABLED
+
 #include <AP_Baro/AP_Baro.h>
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_RPM/AP_RPM.h>
@@ -148,6 +150,7 @@ void AP_Frsky_Backend::calc_gps_position(void)
  */
 bool AP_Frsky_Backend::calc_rpm(const uint8_t instance, int32_t &value) const
 {
+#if AP_RPM_ENABLED
     const AP_RPM* rpm = AP::rpm();
     if (rpm == nullptr) {
         return false;
@@ -159,4 +162,9 @@ bool AP_Frsky_Backend::calc_rpm(const uint8_t instance, int32_t &value) const
     }
     value = static_cast<int32_t>(roundf(rpm_value));
     return true;
+#else
+    return false;
+#endif
 }
+
+#endif  // AP_FRSKY_TELEM_ENABLED

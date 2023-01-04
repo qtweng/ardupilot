@@ -29,6 +29,7 @@ bool AP_Mission::start_command_do_aux_function(const AP_Mission::Mission_Command
     return true;
 }
 
+#if AP_GRIPPER_ENABLED
 bool AP_Mission::start_command_do_gripper(const AP_Mission::Mission_Command& cmd)
 {
     AP_Gripper *gripper = AP::gripper();
@@ -56,6 +57,7 @@ bool AP_Mission::start_command_do_gripper(const AP_Mission::Mission_Command& cmd
         return false;
     }
 }
+#endif  // AP_GRIPPER_ENABLED
 
 bool AP_Mission::start_command_do_servorelayevents(const AP_Mission::Mission_Command& cmd)
 {
@@ -89,6 +91,7 @@ bool AP_Mission::start_command_do_servorelayevents(const AP_Mission::Mission_Com
     }
 }
 
+#if AP_CAMERA_ENABLED
 bool AP_Mission::start_command_camera(const AP_Mission::Mission_Command& cmd)
 {
     AP_Camera *camera = AP::camera();
@@ -133,6 +136,7 @@ bool AP_Mission::start_command_camera(const AP_Mission::Mission_Command& cmd)
         return false;
     }
 }
+#endif
 
 bool AP_Mission::start_command_parachute(const AP_Mission::Mission_Command& cmd)
 {
@@ -245,9 +249,7 @@ bool AP_Mission::start_command_do_gimbal_manager_pitchyaw(const AP_Mission::Miss
         return true;
     }
 
+#endif // HAL_MOUNT_ENABLED
     // if we got this far then message is not handled
     return false;
-#else
-    return false;
-#endif // HAL_MOUNT_ENABLED
 }

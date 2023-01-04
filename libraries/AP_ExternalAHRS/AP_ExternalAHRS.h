@@ -18,16 +18,14 @@
 
 #pragma once
 
+#include "AP_ExternalAHRS_config.h"
+
+#if HAL_EXTERNAL_AHRS_ENABLED
+
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Param/AP_Param.h>
 #include <AP_Common/Location.h>
 #include <AP_NavEKF/AP_Nav_Common.h>
-
-#ifndef HAL_EXTERNAL_AHRS_ENABLED
-#define HAL_EXTERNAL_AHRS_ENABLED !HAL_MINIMIZE_FEATURES && !defined(HAL_BUILD_AP_PERIPH) && BOARD_FLASH_SIZE > 1024
-#endif
-
-#if HAL_EXTERNAL_AHRS_ENABLED
 
 class AP_ExternalAHRS_backend;
 
@@ -35,6 +33,7 @@ class AP_ExternalAHRS {
 
 public:
     friend class AP_ExternalAHRS_backend;
+    friend class AP_ExternalAHRS_VectorNav;
 
     AP_ExternalAHRS();
 
@@ -57,6 +56,9 @@ public:
         return rate.get();
     }
 
+    // Get model/type name
+    const char* get_name() const;
+
     // get serial port number, -1 for not enabled
     int8_t get_port(void) const;
 
@@ -77,6 +79,7 @@ public:
     } state;
 
     // accessors for AP_AHRS
+    bool enabled() const;
     bool healthy(void) const;
     bool initialised(void) const;
     bool get_quaternion(Quaternion &quat);
@@ -130,12 +133,20 @@ public:
         Vector3f gyro;
         float temperature;
     } ins_data_message_t;
-    
+
+protected:
+
+    enum class OPTIONS {
+        VN_UNCOMP_IMU = 1U << 0,
+    };
+    bool option_is_set(OPTIONS option) const { return (options.get() & int32_t(option)) != 0; }
+
 private:
     AP_ExternalAHRS_backend *backend;
 
     AP_Enum<DevType> devtype;
     AP_Int16         rate;
+    AP_Int16         options;
 
     static AP_ExternalAHRS *_singleton;
 };

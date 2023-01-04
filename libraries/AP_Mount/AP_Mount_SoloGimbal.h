@@ -5,7 +5,6 @@
 
 
 #include <AP_HAL/AP_HAL.h>
-#include <AP_AHRS/AP_AHRS.h>
 
 #include "AP_Mount_Backend.h"
 #if HAL_SOLO_GIMBAL_ENABLED
@@ -29,11 +28,8 @@ public:
     // update mount position - should be called periodically
     void update() override;
 
-    // has_pan_control - returns true if this mount can control it's pan (required for multicopters)
+    // has_pan_control - returns true if this mount can control its pan (required for multicopters)
     bool has_pan_control() const override { return false; }
-
-    // set_mode - sets mount's mode
-    void set_mode(enum MAV_MOUNT_MODE mode) override;
 
     // handle a GIMBAL_REPORT message
     void handle_gimbal_report(mavlink_channel_t chan, const mavlink_message_t &msg) override;

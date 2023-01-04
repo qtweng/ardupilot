@@ -1,6 +1,7 @@
 #include "AP_Common/AP_FWVersion.h"
 #include "LoggerMessageWriter.h"
 #include <AP_Scheduler/AP_Scheduler.h>
+#include <AP_Vehicle/AP_Vehicle_Type.h>
 
 #define FORCE_VERSION_H_INCLUDE
 #include "ap_version.h"
@@ -24,7 +25,7 @@ void LoggerMessageWriter::reset()
 
 bool LoggerMessageWriter::out_of_time_for_writing_messages() const
 {
-#if HAL_SCHEDULER_ENABLED
+#if HAL_SCHEDULER_ENABLED && !APM_BUILD_TYPE(APM_BUILD_UNKNOWN)
     return AP::scheduler().time_available_usec() < MIN_LOOP_TIME_REMAINING_FOR_MESSAGE_WRITE_US;
 #else
     return false;
@@ -61,7 +62,7 @@ bool LoggerMessageWriter_DFLogStart::out_of_time_for_writing_messages() const
 {
     if (stage == Stage::FORMATS) {
         // write out the FMT messages as fast as we can
-#if HAL_SCHEDULER_ENABLED
+#if HAL_SCHEDULER_ENABLED && !APM_BUILD_TYPE(APM_BUILD_UNKNOWN)
         return AP::scheduler().time_available_usec() == 0;
 #else
         return false;
@@ -70,17 +71,33 @@ bool LoggerMessageWriter_DFLogStart::out_of_time_for_writing_messages() const
     return LoggerMessageWriter::out_of_time_for_writing_messages();
 }
 
+/*
+  check if we've taken too long in a process() stage
+  return true if we should stop processing now as we are out of time
+ */
+bool LoggerMessageWriter_DFLogStart::check_process_limit(uint32_t start_us)
+{
+    const uint32_t limit_us = 1000U;
+    if (AP_HAL::micros() - start_us > limit_us) {
+        return true;
+    }
+    return false;
+}
+
 void LoggerMessageWriter_DFLogStart::process()
 {
     if (out_of_time_for_writing_messages()) {
         return;
     }
+    // allow any stage to run for max 1ms, to prevent a long loop on arming
+    const uint32_t start_us = AP_HAL::micros();
 
     switch(stage) {
     case Stage::FORMATS:
         // write log formats so the log is self-describing
         while (next_format_to_send < _logger_backend->num_types()) {
-            if (!_logger_backend->Write_Format(_logger_backend->structure(next_format_to_send))) {
+            if (!_logger_backend->Write_Format(_logger_backend->structure(next_format_to_send)) ||
+                check_process_limit(start_us)) {
                 return; // call me again!
             }
             next_format_to_send++;
@@ -89,9 +106,10 @@ void LoggerMessageWriter_DFLogStart::process()
         stage = Stage::PARMS;
         FALLTHROUGH;
 
-    case Stage::PARMS:
+    case Stage::PARMS: {
         while (ap) {
-            if (!_logger_backend->Write_Parameter(ap, token, type, param_default)) {
+            if (!_logger_backend->Write_Parameter(ap, token, type, param_default) ||
+                check_process_limit(start_us)) {
                 return;
             }
             param_default = AP::logger().quiet_nanf();
@@ -100,11 +118,13 @@ void LoggerMessageWriter_DFLogStart::process()
 
         _params_done = true;
         stage = Stage::UNITS;
+        }
         FALLTHROUGH;
 
     case Stage::UNITS:
         while (_next_unit_to_send < _logger_backend->num_units()) {
-            if (!_logger_backend->Write_Unit(_logger_backend->unit(_next_unit_to_send))) {
+            if (!_logger_backend->Write_Unit(_logger_backend->unit(_next_unit_to_send)) ||
+                check_process_limit(start_us)) {
                 return; // call me again!
             }
             _next_unit_to_send++;
@@ -114,7 +134,8 @@ void LoggerMessageWriter_DFLogStart::process()
 
     case Stage::MULTIPLIERS:
         while (_next_multiplier_to_send < _logger_backend->num_multipliers()) {
-            if (!_logger_backend->Write_Multiplier(_logger_backend->multiplier(_next_multiplier_to_send))) {
+            if (!_logger_backend->Write_Multiplier(_logger_backend->multiplier(_next_multiplier_to_send)) ||
+                check_process_limit(start_us)) {
                 return; // call me again!
             }
             _next_multiplier_to_send++;
@@ -124,7 +145,8 @@ void LoggerMessageWriter_DFLogStart::process()
 
     case Stage::FORMAT_UNITS:
         while (_next_format_unit_to_send < _logger_backend->num_types()) {
-            if (!_logger_backend->Write_Format_Units(_logger_backend->structure(_next_format_unit_to_send))) {
+            if (!_logger_backend->Write_Format_Units(_logger_backend->structure(_next_format_unit_to_send)) ||
+                check_process_limit(start_us)) {
                 return; // call me again!
             }
             _next_format_unit_to_send++;
@@ -279,7 +301,7 @@ void LoggerMessageWriter_WriteSysInfo::process() {
         FALLTHROUGH;
     }
     case Stage::SYSTEM_ID:
-        char sysid[40];
+        char sysid[50];
         if (hal.util->get_system_id(sysid)) {
             if (! _logger_backend->Write_Message(sysid)) {
                 return; // call me again
@@ -295,7 +317,7 @@ void LoggerMessageWriter_WriteSysInfo::process() {
         stage = Stage::RC_PROTOCOL;
         FALLTHROUGH;
 
-    case Stage::RC_PROTOCOL:
+    case Stage::RC_PROTOCOL: {
         const char *prot = hal.rcin->protocol();
         if (prot == nullptr) {
             prot = "None";
@@ -303,6 +325,18 @@ void LoggerMessageWriter_WriteSysInfo::process() {
         if (! _logger_backend->Write_MessageF("RC Protocol: %s", prot)) {
             return; // call me again
         }
+        stage = Stage::RC_OUTPUT;
+        FALLTHROUGH;
+    }
+    case Stage::RC_OUTPUT: {
+        char banner_msg[50];
+        if (hal.rcout->get_output_mode_banner(banner_msg, sizeof(banner_msg))) {
+            if (!_logger_backend->Write_Message(banner_msg)) {
+                return; // call me again
+            }
+        }
+        break;
+    }
     }
 
     _finished = true;  // all done!
@@ -417,6 +451,7 @@ void LoggerMessageWriter_Write_Polyfence::process() {
 
     AC_Fence *fence = AP::fence();
     if (fence == nullptr) {
+        _finished = true;
         return;
     }
 

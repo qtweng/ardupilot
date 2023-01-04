@@ -40,6 +40,14 @@
 
 extern const AP_HAL::HAL& hal;
 
+#ifndef SIM_RATE_HZ_DEFAULT
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+#define SIM_RATE_HZ_DEFAULT 1200
+#else
+#define SIM_RATE_HZ_DEFAULT 400
+#endif
+#endif
+
 namespace SITL {
 
 SIM *SIM::_singleton = nullptr;
@@ -174,6 +182,9 @@ const AP_Param::GroupInfo SIM::var_info2[] = {
     // motor harmonics
     AP_GROUPINFO("VIB_MOT_HMNC", 60, SIM,  vibe_motor_harmonics, 1),
 
+    // motor mask, allowing external simulators to mark motors
+    AP_GROUPINFO("VIB_MOT_MASK", 5, SIM,  vibe_motor_mask, 0),
+    
     // max motor vibration frequency
     AP_GROUPINFO("VIB_MOT_MAX", 61, SIM,  vibe_motor, 0.0f),
     // minimum throttle for simulated ins noise
@@ -219,7 +230,7 @@ const AP_Param::GroupInfo SIM::var_info3[] = {
     // vicon velocity glitch in NED frame
     AP_GROUPINFO("VICON_VGLI",    21, SIM,  vicon_vel_glitch, 0),
 
-    AP_GROUPINFO("RATE_HZ",  22, SIM,  loop_rate_hz, 1200),
+    AP_GROUPINFO("RATE_HZ",  22, SIM,  loop_rate_hz, SIM_RATE_HZ_DEFAULT),
 
     // count of simulated IMUs
     AP_GROUPINFO("IMU_COUNT",    23, SIM,  imu_count,  2),
@@ -243,6 +254,8 @@ const AP_Param::GroupInfo SIM::var_info3[] = {
 #if BARO_MAX_INSTANCES > 2
     AP_SUBGROUPINFO(baro[2], "BAR3_", 36, SIM, SIM::BaroParm),
 #endif
+
+    AP_GROUPINFO("TIME_JITTER",  37, SIM,  loop_time_jitter_us, 0),
 
     // user settable parameters for the 1st barometer
     // @Param: BARO_RND
@@ -314,6 +327,8 @@ const AP_Param::GroupInfo SIM::BaroParm::var_info[] = {
     AP_GROUPINFO("WCF_BAK", 8,  SIM::BaroParm, wcof_xn, 0.0),
     AP_GROUPINFO("WCF_RGT", 9,  SIM::BaroParm, wcof_yp, 0.0),
     AP_GROUPINFO("WCF_LFT", 10, SIM::BaroParm, wcof_yn, 0.0),
+    AP_GROUPINFO("WCF_UP",  11, SIM::BaroParm, wcof_zp, 0.0),
+    AP_GROUPINFO("WCF_DN",  12, SIM::BaroParm, wcof_zn, 0.0),
     AP_GROUPEND
 };
 
@@ -368,6 +383,8 @@ const AP_Param::GroupInfo SIM::var_gps[] = {
     AP_GROUPINFO("INIT_LAT_OFS",  45, SIM,  gps_init_lat_ofs, 0),
     AP_GROUPINFO("INIT_LON_OFS",  46, SIM,  gps_init_lon_ofs, 0),
     AP_GROUPINFO("INIT_ALT_OFS",  47, SIM,  gps_init_alt_ofs, 0),
+
+    AP_GROUPINFO("GPS_LOG_NUM",   48, SIM,  gps_log_num, 0),
 
     AP_GROUPEND
 };
@@ -508,7 +525,11 @@ const AP_Param::GroupInfo SIM::var_ins[] = {
     // @DisplayName: SIM-on_hardware Output Enable Mask
     // @Description: channels which are passed through to actual hardware when running on actual hardware
     AP_GROUPINFO("OH_MASK",     28, SIM, on_hardware_output_enable_mask, 0),
-
+#if AP_SIM_INS_FILE_ENABLED
+    // read and write IMU data to/from files
+    AP_GROUPINFO("GYR_FILE_RW", 29, SIM, gyro_file_rw, INSFileMode::INS_FILE_NONE),
+    AP_GROUPINFO("ACC_FILE_RW", 30, SIM, accel_file_rw, INSFileMode::INS_FILE_NONE),
+#endif
     // the IMUT parameters must be last due to the enable parameters
 #if HAL_INS_TEMPERATURE_CAL_ENABLE
     AP_SUBGROUPINFO(imu_tcal[0], "IMUT1_", 61, SIM, AP_InertialSensor::TCal),
@@ -663,7 +684,7 @@ Vector3f SIM::convert_earth_frame(const Matrix3f &dcm, const Vector3f &gyro)
 
 // get the rangefinder reading for the desired rotation, returns -1 for no data
 float SIM::get_rangefinder(uint8_t instance) {
-    if (instance < RANGEFINDER_MAX_INSTANCES) {
+    if (instance < ARRAY_SIZE(state.rangefinder_m)) {
         return state.rangefinder_m[instance];
     }
     return -1;

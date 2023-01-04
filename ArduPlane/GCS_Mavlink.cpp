@@ -627,6 +627,23 @@ bool GCS_MAVLINK_Plane::handle_guided_request(AP_Mission::Mission_Command &cmd)
 }
 
 /*
+  handle request to KU custom mode. Use KU_PWM_Override
+*/
+bool GCS_MAVLINK_Plane::handle_KU_request(AP_Mission::Mission_Command &cmd)
+{
+    // if pwm0
+    if (cmd.id == 653) {
+        return plane.control_mode->handle_KU_request(0 ,cmd.content.ku_pwm_0.aileron, cmd.content.ku_pwm_0.elevator, cmd.content.ku_pwm_0.throttle, cmd.content.ku_pwm_0.rudder);
+
+    } else if (cmd.id == 655) {
+    // else pwm2
+        return plane.control_mode->handle_KU_request(1 ,cmd.content.ku_pwm_2.motor1, cmd.content.ku_pwm_2.motor2, cmd.content.ku_pwm_2.motor3, cmd.content.ku_pwm_2.motor4);
+    }
+    return false;
+
+}
+
+/*
   handle a request to change current WP altitude. This happens via a
   callback from handle_mission_item()
  */

@@ -160,6 +160,7 @@ public:
     friend class ModeTakeoff;
     friend class ModeThermal;
     friend class ModeLoiterAltQLand;
+    friend class ModeKU;
 
     Plane(void);
 
@@ -283,6 +284,7 @@ private:
 #if HAL_SOARING_ENABLED
     ModeThermal mode_thermal;
 #endif
+    ModeKU mode_ku;
 
     // This is the state of the flight control system
     // There are multiple states defined such as MANUAL, FBW-A, AUTO
@@ -817,6 +819,16 @@ private:
     static const TerrainLookupTable Terrain_lookup[];
 #endif
 
+    //KU override variables
+    int32_t aileron;
+    int32_t elevator;
+    int32_t throttle;
+    int32_t rudder;
+    int32_t motor1;
+    int32_t motor2;
+    int32_t motor3;
+    int32_t motor4;
+
     // Attitude.cpp
     void adjust_nav_pitch_throttle(void);
     void update_load_factor(void);
@@ -1214,6 +1226,8 @@ public:
     bool set_velocity_match(const Vector2f &velocity) override;
 #endif // AP_SCRIPTING_ENABLED
 
+    // update plane attributes. Implementation thrown in commands.cpp, like guided mode
+    bool set_pwm_values(const KU_PWM_Overwrite_0& pwm0, KU_PWM_Overwrite_2 pwm2) override;
 };
 
 extern Plane plane;

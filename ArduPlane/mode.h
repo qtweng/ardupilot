@@ -53,6 +53,7 @@ public:
 #if HAL_QUADPLANE_ENABLED
         LOITER_ALT_QLAND = 25,
 #endif
+        KU            = 26,
     };
 
     // Constructor
@@ -726,3 +727,24 @@ protected:
 };
 
 #endif
+
+class ModeKU: public Mode
+{
+public:
+
+    Number mode_number() const override { return Number::KU; }
+    const char *name() const override { return "KU"; }
+    const char *name4() const override { return "KU"; }
+
+    // methods that affect movement of the vehicle in this mode
+    void update() override;
+
+    virtual bool is_KU_mode() const override { return true; }
+
+    // handle a KU PWM request from GCS
+    bool handle_KU_request(bool option, int32_t param0, int32_t param1, int32_t param2, int32_t param3) override;
+
+protected:
+
+    bool _enter() override;
+};

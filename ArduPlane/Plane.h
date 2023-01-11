@@ -822,16 +822,6 @@ private:
     static const TerrainLookupTable Terrain_lookup[];
 #endif
 
-    //KU override variables
-    int32_t aileron_ku;
-    int32_t elevator_ku;
-    int32_t throttle_ku;
-    int32_t rudder_ku;
-    int32_t motor1;
-    int32_t motor2;
-    int32_t motor3;
-    int32_t motor4;
-
     // Attitude.cpp
     void adjust_nav_pitch_throttle(void);
     void update_load_factor(void);

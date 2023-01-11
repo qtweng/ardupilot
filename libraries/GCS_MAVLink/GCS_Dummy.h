@@ -23,7 +23,7 @@ private:
     void handleMessage(const mavlink_message_t &msg) override {}
     bool try_send_message(enum ap_message id) override { return true; }
     bool handle_guided_request(AP_Mission::Mission_Command &cmd) override { return true; }
-    bool handle_KU_request(AP_Mission::Mission_Command &cmd) override { return true; }
+    bool handle_KU_request(const mavlink_command_long_t &packet) override { return true; }
 
 protected:
 

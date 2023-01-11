@@ -1247,21 +1247,6 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
         cmd.content.gimbal_manager_pitchyaw.gimbal_id = packet.z;
         break;
 
-    // KU PWM overwrite
-    case 653:
-        cmd.content.ku_pwm_0.aileron = packet.param1;
-        cmd.content.ku_pwm_0.elevator = packet.param2;
-        cmd.content.ku_pwm_0.throttle = packet.param3;
-        cmd.content.ku_pwm_0.rudder = packet.param4;
-        break;
-
-    case 655:
-        cmd.content.ku_pwm_2.motor1 = packet.param1;
-        cmd.content.ku_pwm_2.motor2 = packet.param2;
-        cmd.content.ku_pwm_2.motor3 = packet.param3;
-        cmd.content.ku_pwm_2.motor4 = packet.param4;
-        break;
-
     default:
         // unrecognised command
         return MAV_MISSION_UNSUPPORTED;

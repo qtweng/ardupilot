@@ -832,7 +832,7 @@ void GCS_MAVLINK::handle_mission_item(const mavlink_message_t &msg)
     const uint8_t current = mission_item_int.current;
     const MAV_MISSION_TYPE type = (MAV_MISSION_TYPE)mission_item_int.mission_type;
 
-    if (type == MAV_MISSION_TYPE_MISSION && (current == 2 || current == 3 || current == 4)) {
+    if (type == MAV_MISSION_TYPE_MISSION && (current == 2 || current == 3)) {
         struct AP_Mission::Mission_Command cmd = {};
         MAV_MISSION_RESULT result = AP_Mission::mavlink_int_to_mission_cmd(mission_item_int, cmd);
         if (result != MAV_MISSION_ACCEPTED) {
@@ -853,10 +853,6 @@ void GCS_MAVLINK::handle_mission_item(const mavlink_message_t &msg)
 
             // verify we received the command
             result = MAV_MISSION_ACCEPTED;
-        } else if (current == 4) {
-            // current = 4 is a flag to tell us this is the KU custom mode
-            result = (handle_KU_request(cmd) ? MAV_MISSION_ACCEPTED
-                      : MAV_MISSION_ERROR) ;
         }
         send_mission_ack(msg, MAV_MISSION_TYPE_MISSION, result);
         return;
@@ -4732,6 +4728,24 @@ MAV_RESULT GCS_MAVLINK::handle_command_long_packet(const mavlink_command_long_t 
 
     case MAV_CMD_FIXED_MAG_CAL_YAW:
         result = handle_fixed_mag_cal_yaw(packet);
+        break;
+
+    case 653:
+        if (handle_KU_request(packet)) {
+            result = MAV_RESULT_ACCEPTED;
+        }
+        break;
+
+    case 654:
+        if (handle_KU_request(packet)) {
+            result = MAV_RESULT_ACCEPTED;
+        }
+        break;
+
+    case 655:
+        if (handle_KU_request(packet)) {
+            result = MAV_RESULT_ACCEPTED;
+        }
         break;
 
     default:

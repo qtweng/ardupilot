@@ -927,9 +927,10 @@ private:
     void send_distance_sensor(const class AP_RangeFinder_Backend *sensor, const uint8_t instance) const;
 
     virtual bool handle_guided_request(AP_Mission::Mission_Command &cmd) = 0;
-    virtual bool handle_KU_request(AP_Mission::Mission_Command &cmd) = 0;
     virtual void handle_change_alt_request(AP_Mission::Mission_Command &cmd) {};
     void handle_common_mission_message(const mavlink_message_t &msg);
+
+    virtual bool handle_KU_request(const mavlink_command_long_t &packet) = 0;
 
     virtual void handle_manual_control_axes(const mavlink_manual_control_t &packet, const uint32_t tnow) {};
 

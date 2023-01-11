@@ -261,21 +261,6 @@ public:
         uint8_t gimbal_id;
     };
 
-    // PWM overwrite
-    struct PACKED KU_PWM_Overwrite_0 {
-        int32_t aileron;
-        int32_t elevator;
-        int32_t throttle;
-        int32_t rudder;
-    };
-
-    struct PACKED KU_PWM_Overwrite_2 {
-        int32_t motor1;
-        int32_t motor2;
-        int32_t motor3;
-        int32_t motor4;
-    };
-
     union Content {
         // jump structure
         Jump_Command jump;
@@ -360,10 +345,6 @@ public:
         // location
         Location location{};      // Waypoint location
 
-        // KU custom outputs
-        KU_PWM_Overwrite_0 ku_pwm_0;
-
-        KU_PWM_Overwrite_2 ku_pwm_2;
     };
 
     // command structure

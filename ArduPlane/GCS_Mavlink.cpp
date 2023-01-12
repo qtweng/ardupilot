@@ -686,20 +686,7 @@ bool GCS_MAVLINK_Plane::handle_guided_request(AP_Mission::Mission_Command &cmd)
 */
 bool GCS_MAVLINK_Plane::handle_KU_request(const mavlink_command_long_t &packet)
 {
-    // if pwm for primary control surfaces
-    if (packet.command == 653) {
-        return plane.control_mode->handle_KU_request(0 ,packet.param1, packet.param2, packet.param3, packet.param4);
-
-    } else if (packet.command == 654) {
-    // if pwm for motors 1-4
-        return plane.control_mode->handle_KU_request(1 ,packet.param1, packet.param2, packet.param3, packet.param4);
-    }
-    else if (packet.command == 655) {
-    // if pwm for motors 5-8
-        return plane.control_mode->handle_KU_request(2 ,packet.param1, packet.param2, packet.param3, packet.param4);
-    }
-    return false;
-
+    return plane.control_mode->handle_KU_request(packet.param1, packet.param2, packet.param3, packet.param4, packet.param5);
 }
 
 /*

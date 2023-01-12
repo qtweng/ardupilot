@@ -123,7 +123,7 @@ public:
     // handle a guided target request from GCS
     virtual bool handle_guided_request(Location target_loc) { return false; }
 
-    virtual bool handle_KU_request(int8_t option, int32_t param0, int32_t param1, int32_t param2, int32_t param3) { return false; }
+    virtual bool handle_KU_request(int32_t param1, int32_t param2, int32_t param3, int32_t param4, int32_t param5) { return false; }
 
 
 protected:
@@ -759,6 +759,6 @@ public:
     virtual bool is_KU_mode() const override { return true; }
 
     // handle a PWM override request from GCS
-    bool handle_KU_request(int8_t option, int32_t param0, int32_t param1, int32_t param2, int32_t param3) override;
+    bool handle_KU_request(int32_t param1, int32_t param2, int32_t param3, int32_t param4, int32_t param5) override;
 
 };

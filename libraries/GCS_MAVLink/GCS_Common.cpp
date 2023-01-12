@@ -4729,19 +4729,7 @@ MAV_RESULT GCS_MAVLINK::handle_command_long_packet(const mavlink_command_long_t 
         result = handle_fixed_mag_cal_yaw(packet);
         break;
 
-    case 653:
-        if (handle_KU_request(packet)) {
-            result = MAV_RESULT_ACCEPTED;
-        }
-        break;
-
-    case 654:
-        if (handle_KU_request(packet)) {
-            result = MAV_RESULT_ACCEPTED;
-        }
-        break;
-
-    case 655:
+    case 226:
         if (handle_KU_request(packet)) {
             result = MAV_RESULT_ACCEPTED;
         }

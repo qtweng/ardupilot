@@ -57,7 +57,7 @@ MAV_MODE GCS_MAVLINK_Plane::base_mode() const
     case Mode::Number::THERMAL:
     case Mode::Number::AVOID_ADSB:
     case Mode::Number::GUIDED:
-    case Mode::Number::KU:
+    case Mode::Number::OFFBOARD:
     case Mode::Number::CIRCLE:
     case Mode::Number::TAKEOFF:
 #if HAL_QUADPLANE_ENABLED
@@ -684,9 +684,9 @@ bool GCS_MAVLINK_Plane::handle_guided_request(AP_Mission::Mission_Command &cmd)
 /*
   handle request to offboard controls. From handle_command_long_packet().
 */
-bool GCS_MAVLINK_Plane::handle_KU_request(const mavlink_command_long_t &packet)
+bool GCS_MAVLINK_Plane::handle_offboard_request(const mavlink_command_long_t &packet)
 {
-    return plane.control_mode->handle_KU_request(packet.param1, packet.param2, packet.param3, packet.param4, packet.param5);
+    return plane.control_mode->handle_offboard_request(packet.param1, packet.param2, packet.param3, packet.param4, packet.param5);
 }
 
 /*

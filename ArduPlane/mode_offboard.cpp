@@ -1,11 +1,11 @@
 #include "mode.h"
 #include "Plane.h"
 
-void ModeKU::update()
+void ModeOffboard::update()
 {
     return;
 }
-bool ModeKU::handle_KU_request(int32_t param1, int32_t param2, int32_t param3, int32_t param4, int32_t param5)
+bool ModeOffboard::handle_offboard_request(int32_t param1, int32_t param2, int32_t param3, int32_t param4, int32_t param5)
 {
     if (param5 == 0) {
         SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, param1);

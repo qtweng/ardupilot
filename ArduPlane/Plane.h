@@ -159,7 +159,7 @@ public:
     friend class ModeTakeoff;
     friend class ModeThermal;
     friend class ModeLoiterAltQLand;
-    friend class ModeKU;
+    friend class ModeOffboard;
 
     Plane(void);
 
@@ -285,7 +285,7 @@ private:
 #if HAL_SOARING_ENABLED
     ModeThermal mode_thermal;
 #endif
-    ModeKU mode_ku;
+    ModeOffboard mode_offboard;
 
     // This is the state of the flight control system
     // There are multiple states defined such as MANUAL, FBW-A, AUTO

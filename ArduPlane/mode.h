@@ -52,7 +52,7 @@ public:
 #if HAL_QUADPLANE_ENABLED
         LOITER_ALT_QLAND = 25,
 #endif
-        KU            = 26,
+        OFFBOARD      = 26,
     };
 
     // Constructor
@@ -94,7 +94,7 @@ public:
     // guided or adsb mode
     virtual bool is_guided_mode() const { return false; }
 
-    virtual bool is_KU_mode() const { return false; }
+    virtual bool is_offboard_mode() const { return false; }
 
     // true if mode can have terrain following disabled by switch
     virtual bool allows_terrain_disable() const { return false; }
@@ -123,7 +123,7 @@ public:
     // handle a guided target request from GCS
     virtual bool handle_guided_request(Location target_loc) { return false; }
 
-    virtual bool handle_KU_request(int32_t param1, int32_t param2, int32_t param3, int32_t param4, int32_t param5) { return false; }
+    virtual bool handle_offboard_request(int32_t param1, int32_t param2, int32_t param3, int32_t param4, int32_t param5) { return false; }
 
 
 protected:
@@ -745,20 +745,20 @@ protected:
 
 #endif
 
-class ModeKU: public Mode
+class ModeOffboard: public Mode
 {
 public:
 
-    Number mode_number() const override { return Number::KU; }
-    const char *name() const override { return "KU"; }
-    const char *name4() const override { return "KU"; }
+    Number mode_number() const override { return Number::OFFBOARD; }
+    const char *name() const override { return "OFFBOARD"; }
+    const char *name4() const override { return "OFFBOARD"; }
 
     // methods that affect movement of the vehicle in this mode
     void update() override;
 
-    virtual bool is_KU_mode() const override { return true; }
+    virtual bool is_offboard_mode() const override { return true; }
 
     // handle a PWM override request from GCS
-    bool handle_KU_request(int32_t param1, int32_t param2, int32_t param3, int32_t param4, int32_t param5) override;
+    bool handle_offboard_request(int32_t param1, int32_t param2, int32_t param3, int32_t param4, int32_t param5) override;
 
 };

@@ -4730,7 +4730,7 @@ MAV_RESULT GCS_MAVLINK::handle_command_long_packet(const mavlink_command_long_t 
         break;
 
     case 226:
-        if (handle_KU_request(packet)) {
+        if (handle_offboard_request(packet)) {
             result = MAV_RESULT_ACCEPTED;
         }
         break;

@@ -11,7 +11,7 @@ bool ModeOffboard::handle_offboard_request(int32_t param1, int32_t param2, int32
         SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, param1);
         SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, param2);
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, param3);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_rudder, param4);
+        plane.steering_control.steering = plane.steering_control.rudder = param4;
     } else if (param5 == 1) {
         SRV_Channels::set_output_scaled(SRV_Channel::k_motor1, param1);
         SRV_Channels::set_output_scaled(SRV_Channel::k_motor2, param2);

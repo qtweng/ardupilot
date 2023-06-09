@@ -53,6 +53,7 @@ public:
 #if HAL_QUADPLANE_ENABLED
         LOITER_ALT_QLAND = 25,
 #endif
+        AUTO_PLUS     = 27,
     };
 
     // Constructor
@@ -723,6 +724,33 @@ protected:
     void restore_mode(const char *reason, ModeReason modereason);
 
     bool _enter() override;
+};
+
+class ModeAutoPlus : public Mode
+{
+public:
+
+    Number mode_number() const override { return Number::AUTO_PLUS; }
+    const char *name() const override { return "AUTO_PLUS"; }
+    const char *name4() const override { return "AUTO_PLUS"; }
+
+    bool does_automatic_thermal_switch() const override { return true; }
+
+    // methods that affect movement of the vehicle in this mode
+    void update() override;
+
+    void navigate() override;
+
+    bool allows_throttle_nudging() const override { return true; }
+
+    bool does_auto_navigation() const override;
+
+    bool does_auto_throttle() const override;
+
+protected:
+
+    bool _enter() override;
+    void _exit() override;
 };
 
 #endif

@@ -644,6 +644,11 @@ bool Plane::verify_nav_wp(const AP_Mission::Mission_Command& cmd)
         nav_controller->update_waypoint(current_loc, flex_next_WP_loc);
     }
 
+    if (control_mode == &mode_auto_plus) {
+        // LN controller for auto_plus
+        return LN_controller.update_waypoint(prev_WP_loc, flex_next_WP_loc);
+    }
+
     // see if the user has specified a maximum distance to waypoint
     // If override with p3 - then this is not used as it will overfly badly
     if (g.waypoint_max_radius > 0 &&
@@ -979,7 +984,7 @@ void Plane::do_set_home(const AP_Mission::Mission_Command& cmd)
 //      we double check that the flight mode is AUTO to avoid the possibility of ap-mission triggering actions while we're not in AUTO mode
 bool Plane::start_command_callback(const AP_Mission::Mission_Command &cmd)
 {
-    if (control_mode == &mode_auto) {
+    if (control_mode == &mode_auto || control_mode == &mode_auto_plus) {
         return start_command(cmd);
     }
     return true;
@@ -989,7 +994,7 @@ bool Plane::start_command_callback(const AP_Mission::Mission_Command &cmd)
 //      we double check that the flight mode is AUTO to avoid the possibility of ap-mission triggering actions while we're not in AUTO mode
 bool Plane::verify_command_callback(const AP_Mission::Mission_Command& cmd)
 {
-    if (control_mode == &mode_auto) {
+    if (control_mode == &mode_auto || control_mode == &mode_auto_plus) {
         bool cmd_complete = verify_command(cmd);
 
         // send message to GCS
@@ -1006,7 +1011,7 @@ bool Plane::verify_command_callback(const AP_Mission::Mission_Command& cmd)
 //      we double check that the flight mode is AUTO to avoid the possibility of ap-mission triggering actions while we're not in AUTO mode
 void Plane::exit_mission_callback()
 {
-    if (control_mode == &mode_auto) {
+    if (control_mode == &mode_auto || control_mode == &mode_auto_plus) {
         set_mode(mode_rtl, ModeReason::MISSION_END);
         gcs().send_text(MAV_SEVERITY_INFO, "Mission complete, changing mode to RTL");
     }

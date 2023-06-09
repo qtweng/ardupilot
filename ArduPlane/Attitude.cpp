@@ -773,6 +773,9 @@ void Plane::calc_nav_roll()
         guided_state.target_heading_limit_high = (desired >= bank_limit);
         commanded_roll = constrain_float(desired, -bank_limit, bank_limit);
 #endif // OFFBOARD_GUIDED == ENABLED
+    } else if (control_mode == &mode_auto_plus) {
+        // in auto plus, we use LN controller
+        commanded_roll = LN_controller.nav_roll_cd();
     }
 
     nav_roll_cd = constrain_int32(commanded_roll, -roll_limit_cd, roll_limit_cd);

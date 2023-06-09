@@ -30,6 +30,8 @@ def build(bld):
             'AC_AutoTune',
             'AP_KDECAN',
             'AP_Follow',
+            'Eigen',
+            'LN_Control',
         ],
     )
 
@@ -37,4 +39,5 @@ def build(bld):
         program_name='arduplane',
         program_groups=['bin', 'plane'],
         use=vehicle + '_libs',
+        defines=['ALLOW_DOUBLE_MATH_FUNCTIONS'],
     )

@@ -52,6 +52,7 @@ MAV_MODE GCS_MAVLINK_Plane::base_mode() const
         _base_mode = MAV_MODE_FLAG_STABILIZE_ENABLED;
         break;
     case Mode::Number::AUTO:
+    case Mode::Number::AUTO_PLUS:
     case Mode::Number::RTL:
     case Mode::Number::LOITER:
     case Mode::Number::THERMAL:

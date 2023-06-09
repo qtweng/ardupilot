@@ -594,7 +594,13 @@ void Plane::calc_nav_pitch()
  */
 void Plane::calc_nav_roll()
 {
-    int32_t commanded_roll = nav_controller->nav_roll_cd();
+    int32_t commanded_roll;
+    if (control_mode == &mode_auto_plus) {
+        // in auto plus, we use LN controller
+        commanded_roll = LN_controller.nav_roll_cd();
+    } else {
+        commanded_roll = nav_controller->nav_roll_cd();
+    }
     nav_roll_cd = constrain_int32(commanded_roll, -roll_limit_cd, roll_limit_cd);
     update_load_factor();
 }

@@ -21,9 +21,9 @@ class LN_Control{
         int32_t nav_roll_cd(void) const;
         bool update_waypoint(const struct Location &prev_WP, const struct Location &next_WP);
 
-        Eigen::Matrix<float,2,3> wptparameterization(const struct Location &prev_WP, const struct Location &next_WP);
+        Eigen::Matrix<float,2,3> wptparameterization(const Vector3f &prev_WP, const Vector3f &next_WP);
         Eigen::Vector3f projectpoint(Eigen::Matrix<float,2,3> lineparam, Eigen::Vector2f q);
-        void GDNC_lat_LN(const struct Location &prev_WP, const struct Location &next_WP);
+        void GDNC_lat_LN();
         void GDNC_lon_LN(const struct Location &prev_WP, const struct Location &next_WP);
 
     private:

@@ -17,19 +17,30 @@ void LN_Control::init(float alt_init, float latL1, float latLN, int latN, const 
     LNlat = latLN;
     Nlat = latN;
 
-    lineparam = wptparameterization(home, wp);
+    path = 9;
+    
     wptLOSerr = Eigen::VectorXf::Ones(Nlat) * INFINITY;
 }
 // update L1 control for waypoint navigation
 bool LN_Control::update_waypoint(const struct Location &prev_WP, const struct Location &next_WP)
 {
+
     // L1 switching logic
     float swdist = 50;
-    for(int i = 0; i < Nlat; i++){
+    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wptLOSerr: %f", wptLOSerr[9]);
+    for(int i = 9; i >= 0; --i){
         if(wptLOSerr[i] < swdist && i == Nlat-1 && path == 0){
+            Vector3f prev_ned;
+            if (!prev_WP.get_vector_from_origin_NEU(prev_ned)) {
+                prev_ned = Vector3f(0, 0, 0);
+            }
+            Vector3f next_ned;
+            if (!next_WP.get_vector_from_origin_NEU(next_ned)) {
+                next_ned = Vector3f(0, 0, 0);
+            }
             // Just got close enough to next waypoint so generate new line parameterization
             path = i;
-            lineparam_n = wptparameterization(prev_WP, next_WP);
+            lineparam_n = wptparameterization(prev_ned*0.0328084, next_ned*0.0328084);
             return true;
         }
         if(wptLOSerr[i] < swdist and i < path){
@@ -41,20 +52,20 @@ bool LN_Control::update_waypoint(const struct Location &prev_WP, const struct Lo
             lineparam = lineparam_n;
         }
     }
-    GDNC_lat_LN(prev_WP, next_WP);
+    GDNC_lat_LN();
     return false;
 }
 
-Eigen::Matrix<float,2,3> LN_Control::wptparameterization(const struct Location &prev_WP, const struct Location &next_WP)
+Eigen::Matrix<float,2,3> LN_Control::wptparameterization(const Vector3f &prev_WP, const Vector3f &next_WP)
 {
     // convert waypoints from Location to vectors
     Eigen::Vector3f next;
-    next << next_WP.lat, next_WP.lng, next_WP.alt;
+    next << next_WP[0], next_WP[1], next_WP[2];
     Eigen::Vector3f prev;
-    prev << prev_WP.lat, prev_WP.lng, prev_WP.alt;
+    prev << prev_WP[0], prev_WP[1], prev_WP[2];
 
     // prevent divide-by-zero on init
-    Eigen::Vector3f v = (next - prev)/((next - prev).norm() + 0.000001);
+    Eigen::Vector3f v = (next - prev)/((next - prev).norm() + 0.0001);
     Eigen::Vector3f p0 = next;
     p0(2) = 0;
 
@@ -73,21 +84,22 @@ Eigen::Vector3f LN_Control::projectpoint(Eigen::Matrix<float,2,3> line, Eigen::V
     auto dotpq_v = pq.dot(v);
     auto dotv_v = v.dot(v);
     // prevent divide-by-zero on init
-    auto t = dotpq_v/(dotv_v + 0.000001);
+    auto t = dotpq_v/(dotv_v + 0.0001);
     Eigen::Vector2f projq = p + t*v;
 
     Eigen::Vector3f projection;
     projection << projq[0], projq[1], 0;
     return projection;
 }
-void LN_Control::GDNC_lat_LN(const struct Location &prev_WP, const struct Location &next_WP){
+void LN_Control::GDNC_lat_LN(){
     Vector3f uav_ned;
     if (!_ahrs.get_relative_position_NED_home(uav_ned)) {
         uav_ned = Vector3f(0, 0, 0);
     }
+    uav_ned = uav_ned*3.28084;
     auto pN     = uav_ned[0];
     auto pE     = uav_ned[1];
-    auto Vgps   = _ahrs.groundspeed_vector();
+    auto Vgps   = _ahrs.groundspeed_vector()*3.28084;
     auto pNdot  = Vgps[0];
     auto pEdot  = Vgps[1];
     Eigen::VectorXf LN     = Eigen::VectorXf::LinSpaced(Nlat, LNlat, L1lat);
@@ -113,6 +125,7 @@ void LN_Control::GDNC_lat_LN(const struct Location &prev_WP, const struct Locati
             posWpt2NE << lineparam.row(0).col(0), lineparam.row(0).col(1), lineparam.row(0).col(2);
         }
         else{ 
+        // if i is higher than path, it is looking at the waypoint ahead
             vecWptNE << lineparam_n.row(1).col(0), lineparam_n.row(1).col(1), 0;
             posWpt2NE << lineparam_n.row(0).col(0), lineparam_n.row(0).col(1), lineparam_n.row(0).col(2);
         }
@@ -128,7 +141,7 @@ void LN_Control::GDNC_lat_LN(const struct Location &prev_WP, const struct Locati
         auto lennNE = vecnNE.norm();
         auto lennL1 = safe_sqrt(sq(LN(i) - lennNE) + 0.0001);
         auto L1lataug = (LN(i) + lennNE + lennL1)/2;
-        auto lenmNE   = safe_sqrt(sq(L1lataug) - (sq(vecnNE(0)) + sq(vecnNE(1)) + sq(vecnNE(2))));
+        auto lenmNE   = safe_sqrt(abs(sq(L1lataug) - (sq(vecnNE(0)) + sq(vecnNE(1)) + sq(vecnNE(2))) + 0.0001));
         
         // L1 point on path
 

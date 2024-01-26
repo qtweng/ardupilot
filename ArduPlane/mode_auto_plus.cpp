@@ -38,8 +38,32 @@ bool ModeAutoPlus::_enter()
 #if HAL_SOARING_ENABLED
     plane.g2.soaring_controller.init_cruising();
 #endif
+    // Get the total number of mission commands
+    uint16_t total_commands = plane.mission.num_commands();
 
-    plane.LN_controller.init(plane.current_loc.alt, 400, 300, 10, plane.current_loc, plane.current_loc);
+    // Iterate through all commands
+    for (uint16_t i = 0; i < total_commands; i++) {
+        // Create a new mission command object to hold the fetched command
+        mavlink_mission_item_int_t cmd;
+        
+        // Retrieve the mission command
+        if (plane.mission.get_item(i, cmd)) {
+            // Check if the command is a navigation command (waypoint)
+            if (cmd.command == MAV_CMD_NAV_WAYPOINT) {
+                // Retrieve latitude, longitude, and altitude
+                double latitude = cmd.x / 1.0e7;
+                double longitude = cmd.y / 1.0e7;
+                double altitude = cmd.z; // Altitude is typically in meters
+
+                // Process the waypoint
+                GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wpt x: %lf", latitude);
+                GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wpt y: %lf", longitude);
+                GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wpt z: %lf", altitude);
+                // You can access the waypoint's parameters through cmd.content.location
+            }
+        }
+    }
+    plane.LN_controller.init();
 
     return true;
 }

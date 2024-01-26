@@ -3,33 +3,62 @@
     
 extern const AP_HAL::HAL& hal;
 
+
+// Initialize the parameter info table
+const AP_Param::GroupInfo LN_Control::var_info[] = {
+    // @Param: ALT0
+    // @DisplayName: Initial Altitude
+    // @Description: Initial altitude for LN Control
+    // @Units: ft
+    AP_GROUPINFO("ALT0", 1, LN_Control, _alt0, 350.0f),
+
+    // @Param: L1LAT
+    // @DisplayName: L1 Lateral Parameter
+    // @Description: L1 lateral parameter for LN Control
+    // @Units: ft
+    AP_GROUPINFO("L1LAT", 2, LN_Control, _L1lat, 400.0f),
+
+    // @Param: LNLAT
+    // @DisplayName: LN Lateral Parameter
+    // @Description: LN lateral parameter for LN Control
+    // @Units: ft
+    AP_GROUPINFO("LNLAT", 3, LN_Control, _LNlat, 300.0f),
+
+    // @Param: NLAT
+    // @DisplayName: N Lateral Parameter
+    // @Description: N lateral parameter for LN Control
+    // @Range: 0 20
+    AP_GROUPINFO("NLAT", 4, LN_Control, _Nlat, 10),
+
+    // @Param: SWDIST
+    // @DisplayName: Switching Distance
+    // @Description: Distance for waypoint switching in LN Control
+    // @Units: ft
+    AP_GROUPINFO("SW_DIST", 5, LN_Control, _swdist, 50.0f),
+
+    AP_GROUPEND
+};
+
+
+
 int32_t LN_Control::nav_roll_cd(void) const
 {
     // return the roll angle in centi-degrees
     return static_cast<int>(phicmd*18000/3.14159);
 }
 
-void LN_Control::init(float alt_init, float latL1, float latLN, int latN, const struct Location &home, const struct Location &wp) 
-{
-    alt0 = alt_init;
-
-    L1lat = latL1;
-    LNlat = latLN;
-    Nlat = latN;
-
-    path = 9;
-    
-    wptLOSerr = Eigen::VectorXf::Ones(Nlat) * INFINITY;
+void LN_Control::init() {
+    path = _Nlat - 1;
+    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "_Nlat: %d", _Nlat.get());
+    wptLOSerr = Eigen::VectorXf::Ones(_Nlat) * INFINITY;
 }
+
 // update L1 control for waypoint navigation
 bool LN_Control::update_waypoint(const struct Location &prev_WP, const struct Location &next_WP)
 {
-
-    // L1 switching logic
-    float swdist = 50;
-    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wptLOSerr: %f", wptLOSerr[9]);
-    for(int i = 9; i >= 0; --i){
-        if(wptLOSerr[i] < swdist && i == Nlat-1 && path == 0){
+    // GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wptLOSerr: %f", wptLOSerr[Nlat-1]);
+    for(int i = _Nlat - 1; i >= 0; --i){
+        if(wptLOSerr[i] < _swdist && i == _Nlat-1 && path == 0){
             Vector3f prev_ned;
             if (!prev_WP.get_vector_from_origin_NEU(prev_ned)) {
                 prev_ned = Vector3f(0, 0, 0);
@@ -43,11 +72,11 @@ bool LN_Control::update_waypoint(const struct Location &prev_WP, const struct Lo
             lineparam_n = wptparameterization(prev_ned*0.0328084, next_ned*0.0328084);
             return true;
         }
-        if(wptLOSerr[i] < swdist and i < path){
+        if(wptLOSerr[i] < _swdist and i < path){
             // Got close enough to next waypoint to move i-th line to new line
             path = i;
         }
-        if(wptLOSerr[i] < swdist and i == 0){
+        if(wptLOSerr[i] < _swdist and i == 0){
             // Far enough through waypoint that there is no longer 2 different line params
             lineparam = lineparam_n;
         }
@@ -102,8 +131,8 @@ void LN_Control::GDNC_lat_LN(){
     auto Vgps   = _ahrs.groundspeed_vector()*3.28084;
     auto pNdot  = Vgps[0];
     auto pEdot  = Vgps[1];
-    Eigen::VectorXf LN     = Eigen::VectorXf::LinSpaced(Nlat, LNlat, L1lat);
-    Eigen::VectorXf phicmds = Eigen::VectorXf::Zero(Nlat);
+    Eigen::VectorXf LN = Eigen::VectorXf::LinSpaced(_Nlat, _LNlat, _L1lat);
+    Eigen::VectorXf phicmds = Eigen::VectorXf::Zero(_Nlat);
 
     // aircraft inertial position
     Eigen::Vector3f posAirNE;
@@ -113,7 +142,7 @@ void LN_Control::GDNC_lat_LN(){
     velAirNE << pNdot, pEdot, 0;
 
 
-    for(int i = 0; i < Nlat; ++i){
+    for(int i = 0; i < _Nlat; ++i){
         // in switching mode, use previous line parameters before path cutoff
 
         // waypoint vector

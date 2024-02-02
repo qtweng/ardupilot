@@ -1,8 +1,4 @@
-#include <AP_HAL/AP_HAL.h>
 #include "LN_Control.h"
-    
-extern const AP_HAL::HAL& hal;
-
 
 // Initialize the parameter info table
 const AP_Param::GroupInfo LN_Control::var_info[] = {
@@ -52,7 +48,7 @@ void LN_Control::init() {
     L1lat = _L1lat;
     Nlat = _Nlat;
     path = Nlat - 1;
-    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Nlat: %d", Nlat);
+    // GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Nlat: %d", Nlat);
 
     wptLOSerr = Eigen::VectorXf::Ones(Nlat) * INFINITY;
     LN = Eigen::VectorXf::LinSpaced(Nlat, LNlat, L1lat);
@@ -62,7 +58,7 @@ void LN_Control::init() {
 // update L1 control for waypoint navigation
 bool LN_Control::update_waypoint(const struct Location &prev_WP, const struct Location &next_WP)
 {
-    //GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wptLOSerr: %f", wptLOSerr[Nlat-1]);
+    // GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wptLOSerr: %f", wptLOSerr[Nlat-1]);
     for(int i = Nlat - 1; i >= 0; --i){
         if(wptLOSerr[i] < _swdist && i == Nlat-1 && path == 0){
             Vector3f prev_ned;
@@ -89,7 +85,7 @@ bool LN_Control::update_waypoint(const struct Location &prev_WP, const struct Lo
     }
     bool updateLN = false;
     if (Nlat != _Nlat){
-        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Update Nlat: %d", _Nlat);
+        // GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Update Nlat: %d", _Nlat.get());
         Nlat = _Nlat;
         updateLN = true;
         wptLOSerr = Eigen::VectorXf::Ones(Nlat) * INFINITY;
@@ -101,7 +97,7 @@ bool LN_Control::update_waypoint(const struct Location &prev_WP, const struct Lo
     }
     if (updateLN) {
         LN = Eigen::VectorXf::LinSpaced(Nlat, LNlat, L1lat);;
-        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "LN norm: %f", LN.norm());
+        // GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "LN norm: %f", LN.norm());
     }
     GDNC_lat_LN();
     return false;

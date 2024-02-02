@@ -1,9 +1,9 @@
 #pragma once
 
 //To include Eigen https://discuss.ardupilot.org/t/add-new-library-to-the-waf-build-system/62812/7
+#include <stdio.h>
 #include "Eigen/Core"
 #include "Eigen/Dense"
-
 #include <AP_Param/AP_Param.h>
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_TECS/AP_TECS.h>

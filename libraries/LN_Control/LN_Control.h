@@ -41,9 +41,12 @@ class LN_Control{
 
         AP_Float _alt0;
 
-        AP_Float _L1lat;
         AP_Float _LNlat;
+        AP_Float _L1lat;
         AP_Int8 _Nlat;
+        float LNlat;
+        float L1lat;
+        int Nlat;
 
         AP_Float _swdist;
         
@@ -51,7 +54,10 @@ class LN_Control{
 
         Eigen::Matrix<float,2,3> lineparam;
         Eigen::Matrix<float,2,3> lineparam_n;
+
         Eigen::VectorXf wptLOSerr;
+        Eigen::VectorXf LN;
+        Eigen::VectorXf phicmds;
 
         float phicmd;
 };

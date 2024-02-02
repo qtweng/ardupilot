@@ -48,17 +48,23 @@ int32_t LN_Control::nav_roll_cd(void) const
 }
 
 void LN_Control::init() {
-    path = _Nlat - 1;
-    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "_Nlat: %d", _Nlat.get());
-    wptLOSerr = Eigen::VectorXf::Ones(_Nlat) * INFINITY;
+    LNlat = _LNlat;
+    L1lat = _L1lat;
+    Nlat = _Nlat;
+    path = Nlat - 1;
+    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Nlat: %d", Nlat);
+
+    wptLOSerr = Eigen::VectorXf::Ones(Nlat) * INFINITY;
+    LN = Eigen::VectorXf::LinSpaced(Nlat, LNlat, L1lat);
+    phicmds = Eigen::VectorXf::Zero(Nlat);
 }
 
 // update L1 control for waypoint navigation
 bool LN_Control::update_waypoint(const struct Location &prev_WP, const struct Location &next_WP)
 {
-    // GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wptLOSerr: %f", wptLOSerr[Nlat-1]);
-    for(int i = _Nlat - 1; i >= 0; --i){
-        if(wptLOSerr[i] < _swdist && i == _Nlat-1 && path == 0){
+    //GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "wptLOSerr: %f", wptLOSerr[Nlat-1]);
+    for(int i = Nlat - 1; i >= 0; --i){
+        if(wptLOSerr[i] < _swdist && i == Nlat-1 && path == 0){
             Vector3f prev_ned;
             if (!prev_WP.get_vector_from_origin_NEU(prev_ned)) {
                 prev_ned = Vector3f(0, 0, 0);
@@ -80,6 +86,22 @@ bool LN_Control::update_waypoint(const struct Location &prev_WP, const struct Lo
             // Far enough through waypoint that there is no longer 2 different line params
             lineparam = lineparam_n;
         }
+    }
+    bool updateLN = false;
+    if (Nlat != _Nlat){
+        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Update Nlat: %d", _Nlat);
+        Nlat = _Nlat;
+        updateLN = true;
+        wptLOSerr = Eigen::VectorXf::Ones(Nlat) * INFINITY;
+        phicmds = Eigen::VectorXf::Zero(Nlat);
+
+    }
+    if (abs(LNlat - _LNlat) > 0.01 || abs(L1lat - _L1lat) > 0.01){
+        updateLN = true;
+    }
+    if (updateLN) {
+        LN = Eigen::VectorXf::LinSpaced(Nlat, LNlat, L1lat);;
+        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "LN norm: %f", LN.norm());
     }
     GDNC_lat_LN();
     return false;
@@ -131,8 +153,6 @@ void LN_Control::GDNC_lat_LN(){
     auto Vgps   = _ahrs.groundspeed_vector()*3.28084;
     auto pNdot  = Vgps[0];
     auto pEdot  = Vgps[1];
-    Eigen::VectorXf LN = Eigen::VectorXf::LinSpaced(_Nlat, _LNlat, _L1lat);
-    Eigen::VectorXf phicmds = Eigen::VectorXf::Zero(_Nlat);
 
     // aircraft inertial position
     Eigen::Vector3f posAirNE;
@@ -141,8 +161,7 @@ void LN_Control::GDNC_lat_LN(){
     Eigen::Vector3f velAirNE;
     velAirNE << pNdot, pEdot, 0;
 
-
-    for(int i = 0; i < _Nlat; ++i){
+    for(int i = 0; i < Nlat; ++i){
         // in switching mode, use previous line parameters before path cutoff
 
         // waypoint vector

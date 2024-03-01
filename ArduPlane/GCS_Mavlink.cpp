@@ -63,6 +63,7 @@ MAV_MODE GCS_MAVLINK_Plane::base_mode() const
     case Mode::Number::QRTL:
     case Mode::Number::LOITER_ALT_QLAND:
 #endif
+    case Mode::Number::OFFBOARD:
         _base_mode = MAV_MODE_FLAG_GUIDED_ENABLED |
                      MAV_MODE_FLAG_STABILIZE_ENABLED;
         // note that MAV_MODE_FLAG_AUTO_ENABLED does not match what
@@ -745,6 +746,27 @@ void GCS_MAVLINK_Plane::handle_change_alt_request(AP_Mission::Mission_Command &c
     plane.reset_offset_altitude();
 }
 
+/*
+  handle request to offboard actuator controls. From handle_set_actuator_control_target()
+*/
+void GCS_MAVLINK_Plane::handle_actuator_control(const mavlink_set_actuator_control_target_t &packet)
+{
+    // Check if all control values are finite
+    bool values_finite = true;
+    for (int i = 0; i < 8; i++)
+    {
+        if (!isfinite(packet.controls[i]))
+        {
+            values_finite = false;
+            break;
+        }
+    }
+
+    if (values_finite)
+    {
+        plane.control_mode->handle_offboard_request(packet.group_mlx, packet.controls);
+    }
+}
 
 MAV_RESULT GCS_MAVLINK_Plane::handle_command_preflight_calibration(const mavlink_command_int_t &packet, const mavlink_message_t &msg)
 {

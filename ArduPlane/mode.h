@@ -54,6 +54,7 @@ public:
 #if HAL_QUADPLANE_ENABLED
         LOITER_ALT_QLAND = 25,
 #endif
+        OFFBOARD      = 26,
     };
 
     // Constructor
@@ -98,6 +99,9 @@ public:
     // guided or adsb mode
     virtual bool is_guided_mode() const { return false; }
 
+    // offboard mode
+    virtual bool is_offboard_mode() const { return false; }
+
     // true if mode can have terrain following disabled by switch
     virtual bool allows_terrain_disable() const { return false; }
 
@@ -128,6 +132,9 @@ public:
 
     // handle a guided target request from GCS
     virtual bool handle_guided_request(Location target_loc) { return false; }
+
+    // handle an offboard actuator control message from GCS
+    virtual void handle_offboard_request(uint8_t group_mlx, const float control_value[8]) {};
 
     // true if is landing 
     virtual bool is_landing() const { return false; }
@@ -841,6 +848,22 @@ protected:
     void restore_mode(const char *reason, ModeReason modereason);
 
     bool _enter() override;
+};
+
+class ModeOffboard : public Mode
+{
+public:
+    Number mode_number() const override { return Number::OFFBOARD; }
+    const char *name() const override { return "OFFBOARD"; }
+    const char *name4() const override { return "OFFBOARD"; }
+
+    void update() override {};
+    void run() override;
+
+    virtual bool is_offboard_mode() const override { return true; }
+
+    // handle a PWM override request from GCS
+    void handle_offboard_request(uint8_t group_mlx, const float control_value[8]) override;
 };
 
 #endif

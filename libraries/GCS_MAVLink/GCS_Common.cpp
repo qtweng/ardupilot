@@ -3832,6 +3832,16 @@ void GCS_MAVLINK::handle_rc_channels_override(const mavlink_message_t &msg)
 }
 #endif  // AP_RC_CHANNEL_ENABLED
 
+// handle a request to set the actuator control target to
+// raw servo values for direct actuator controls
+void GCS_MAVLINK::handle_set_actuator_control_target(const mavlink_message_t &msg)
+{
+    mavlink_set_actuator_control_target_t packet;
+    mavlink_msg_set_actuator_control_target_decode(&msg, &packet);
+
+    handle_actuator_control(packet);
+}
+
 #if AP_OPTICALFLOW_ENABLED
 void GCS_MAVLINK::handle_optical_flow(const mavlink_message_t &msg)
 {
@@ -4190,6 +4200,10 @@ void GCS_MAVLINK::handle_message(const mavlink_message_t &msg)
         handle_rc_channels_override(msg);
         break;
 #endif
+
+    case MAVLINK_MSG_ID_SET_ACTUATOR_CONTROL_TARGET:
+        handle_set_actuator_control_target(msg);
+        break;
 
 #if AP_OPTICALFLOW_ENABLED
     case MAVLINK_MSG_ID_OPTICAL_FLOW:
